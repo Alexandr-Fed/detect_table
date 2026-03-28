@@ -10,8 +10,7 @@ from ultralytics import YOLO
 
 # Константы
 
-# Минимальная доля пересечения bbox человека с зоной столика,
-# чтобы считать человека «у столика» (intersection / area_bbox).
+# Минимальная доля пересечения bbox человека с зоной столика, чтобы считать человека «у столика» (intersection / area_bbox).
 OVERLAP_THRESHOLD = 0.25
 
 # Сколько подряд одинаковых кадров нужно для подтверждения смены состояния.
@@ -22,7 +21,7 @@ COLOR_EMPTY = (0, 200, 0)       # зелёный
 COLOR_OCCUPIED = (0, 0, 220)    # красный
 COLOR_APPROACH = (0, 180, 255)  # оранжевый
 
-# YOLO: класс «person» = 0 в COCO, порог уверенности.
+# YOLO: класс «person» = 0, порог уверенности.
 PERSON_CLASS_ID = 0
 YOLO_CONF = 0.3
 
@@ -30,13 +29,11 @@ YOLO_CONF = 0.3
 # Детектор людей
 
 class YOLOPersonDetector:
-    """Детекция людей через YOLOv11n (предобученная модель COCO)."""
+    """Детекция людей через YOLO"""
 
     def __init__(self):
-        print("[INFO] Загрузка YOLO11n...")
-        # Использую medium модель, потому что small и nano не совсем хорошо
-        # справляются с детекцией.
-        self.model = YOLO("yolo8m.pt")
+        print("[INFO] Загрузка YOLO...")
+        self.model = YOLO("weights/yolov8m.pt")# Использую medium модель, потому что small и nano не совсем хорошо справляются с детекцией
         print("[INFO] Модель загружена")
 
     def detect(self, frame: np.ndarray) -> list:
@@ -100,6 +97,15 @@ def get_roi(video_path: str, roi_arg) -> tuple:
     cap.release()
     if not ret:
         sys.exit("[ERROR] Не удалось прочитать первый кадр")
+
+    #     # Масштабируем кадр для отображения, если он слишком большой.
+    # display_scale = min(1.0, 1280 / frame.shape[1], 720 / frame.shape[0])
+    # if display_scale < 1.0:
+    #     display_h = int(frame.shape[0] * display_scale)
+    #     display_w = int(frame.shape[1] * display_scale)
+    #     display_frame = cv2.resize(frame, (display_w, display_h))
+    # else:
+    #     display_frame = frame
 
     print("\n[INFO] Выберите зону столика мышкой и нажмите ENTER / SPACE.")
     print("       Для отмены — нажмите C.\n")
@@ -295,6 +301,14 @@ def process_video(video_path: str, roi: tuple, output_path: str):
 
         # Обновляем состояние столика.
         state = sm.update(frame_no, person_in_zone)
+
+        # Рисуем bounding box каждого обнаруженного человека.
+        for (px, py, pw, ph) in person_boxes:
+            cv2.rectangle(frame, (px, py), (px + pw, py + ph), (255, 255, 0), 2)
+            cv2.putText(
+                frame, "person", (px, py - 5),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1
+            )
 
         # Рисуем bounding box столика с цветом состояния.
         color = sm.get_color()
